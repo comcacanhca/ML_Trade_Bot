@@ -1,0 +1,27 @@
+[project]
+name = "ml-trade-bot"
+version = "0.1.0"
+description = "MLOps research workspace for ML trading models."
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [
+  "research/rf_mlflow",
+  "vendor/scj"
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+extend-exclude = [
+  "research/docs/*.ipynb",
+  "data",
+  "models",
+  "outputs",
+  "reports"
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+ignore = ["E501"]

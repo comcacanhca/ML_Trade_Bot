@@ -1,0 +1,30 @@
+data:
+  raw_dir: data/raw/1M
+  processed_dir: data/processed
+
+mlflow:
+  tracking_uri: sqlite:///mlflow.db
+  experiment_name: RF_MLFlow_XAUUSD_M1_Buy_WinLose
+
+research:
+  source_spec_run_id: h4edge_lgbm_01_1788886130
+  gate: bb_h4_weak_london
+  max_train_rows: 1000000
+  rolling_scaler: rolling_zscore
+  transform_variant: products
+  top_n: 10
+  n_trials: 50
+  min_valid_resolved: 3000
+  target_valid_resolved: 4200
+  max_valid_resolved: 9000
+  seed: 92101
+
+train:
+  train_years: [2018, 2019, 2020, 2021, 2022]
+  valid_years: [2023]
+  test_years: [2024, 2025, 2026]
+  threshold_grid: [0.50, 0.51, 0.52, 0.53, 0.54, 0.55, 0.56, 0.57, 0.58, 0.59, 0.60]
+
+deploy:
+  model_name: h4edge-products-lgbm
+  image: ghcr.io/OWNER/REPO/ml-trade-bot:latest

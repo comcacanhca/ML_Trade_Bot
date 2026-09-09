@@ -1,0 +1,81 @@
+stages:
+  build_cache:
+    cmd: >-
+      powershell -NoProfile -ExecutionPolicy Bypass -Command
+      "$env:PYTHONPATH='research/rf_mlflow;vendor/scj';
+      cd research/rf_mlflow;
+      python mlops_build_cache.py"
+    deps:
+      - ${data.raw_dir}
+      - research/rf_mlflow/mlops_build_cache.py
+      - research/rf_mlflow/research_random50_initial_features.py
+      - research/rf_mlflow/features.py
+      - research/rf_mlflow/labels.py
+      - research/rf_mlflow/data_io.py
+      - vendor/scj/method/OverlayIndicatorsNormalization.py
+    params:
+      - data.raw_dir
+      - research.rolling_scaler
+    outs:
+      - research/rf_mlflow/cache
+
+  tune_h4edge:
+    cmd: >-
+      powershell -NoProfile -ExecutionPolicy Bypass -Command
+      "$env:PYTHONPATH='research/rf_mlflow;vendor/scj';
+      $env:ML_TRADE_DATA_DIR=(Resolve-Path '${data.raw_dir}');
+      $env:MLFLOW_TRACKING_URI='${mlflow.tracking_uri}';
+      cd research/rf_mlflow;
+      python tune_h4edge_lgbm_01_optuna.py
+      --max-train-rows ${research.max_train_rows}
+      --n-trials ${research.n_trials}
+      --seed ${research.seed}
+      --enable-mlflow"
+    deps:
+      - research/rf_mlflow/cache
+      - research/rf_mlflow/tune_h4edge_lgbm_01_optuna.py
+      - research/rf_mlflow/research_h4_time_edge_mlop.py
+      - research/rf_mlflow/research_random50_initial_features.py
+      - research/rf_mlflow/research_rolling_zscore_50_h4h1.py
+      - research/rf_mlflow/config.py
+      - research/rf_mlflow/plots.py
+      - vendor/scj/method/OverlayIndicatorsNormalization.py
+    params:
+      - research.max_train_rows
+      - research.n_trials
+      - research.seed
+      - mlflow.tracking_uri
+  feature_transforms:
+    cmd: >-
+      powershell -NoProfile -ExecutionPolicy Bypass -Command
+      "$env:PYTHONPATH='research/rf_mlflow;vendor/scj';
+      $env:ML_TRADE_DATA_DIR=(Resolve-Path '${data.raw_dir}');
+      $env:MLFLOW_TRACKING_URI='${mlflow.tracking_uri}';
+      cd research/rf_mlflow;
+      python research_h4edge_feature_transforms_optuna.py
+      --variants ${research.transform_variant}
+      --max-train-rows ${research.max_train_rows}
+      --top-n ${research.top_n}
+      --n-trials ${research.n_trials}
+      --seed ${research.seed}
+      --enable-mlflow"
+    deps:
+      - research/rf_mlflow/cache
+      - research/rf_mlflow/research_h4edge_feature_transforms_optuna.py
+      - research/rf_mlflow/research_h4_time_edge_mlop.py
+      - research/rf_mlflow/tune_h4edge_lgbm_01_optuna.py
+      - research/rf_mlflow/research_random50_initial_features.py
+      - research/rf_mlflow/research_rolling_zscore_50_h4h1.py
+      - research/rf_mlflow/config.py
+      - research/rf_mlflow/plots.py
+      - vendor/scj/method/OverlayIndicatorsNormalization.py
+    params:
+      - research.transform_variant
+      - research.max_train_rows
+      - research.top_n
+      - research.n_trials
+      - research.seed
+      - mlflow.tracking_uri
+    outs:
+      - research/rf_mlflow/models
+      - research/rf_mlflow/outputs

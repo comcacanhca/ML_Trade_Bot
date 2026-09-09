@@ -1,0 +1,16 @@
+numpy
+pandas
+pyarrow
+scikit-learn
+lightgbm
+optuna
+mlflow
+dvc
+kfp>=2.0.0
+matplotlib
+seaborn
+joblib
+numba
+shap
+pytest
+ruff

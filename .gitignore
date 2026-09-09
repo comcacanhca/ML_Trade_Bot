@@ -1,0 +1,36 @@
+.idea/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+venv/
+
+# local data/artifacts; version through DVC instead of git
+data/raw/**
+data/processed/**
+models/**
+outputs/**
+reports/**
+mlruns/
+mlflow.db
+*.log
+*.err.log
+research/rf_mlflow/cache/**
+research/rf_mlflow/models/**
+research/rf_mlflow/outputs/**
+research/rf_mlflow/artifacts/**
+research/rf_mlflow/mlruns/
+
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!models/.gitkeep
+!outputs/.gitkeep
+!reports/.gitkeep
+
+# DVC keeps small metadata in git
+!.dvc/
+!.dvcignore
+!.dvc/**
+!*.dvc
