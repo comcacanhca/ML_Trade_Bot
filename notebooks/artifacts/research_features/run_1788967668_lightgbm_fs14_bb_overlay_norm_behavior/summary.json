@@ -1,0 +1,109 @@
+{
+  "run_id": 1788967668,
+  "mode": "fast",
+  "years": [
+    2022,
+    2023,
+    2024
+  ],
+  "feature_set": "fs14_bb_overlay_norm_behavior",
+  "n_features": 325,
+  "model_kind": "lightgbm",
+  "max_train_rows": 500000,
+  "selected_threshold": 0.6,
+  "metrics": {
+    "train": {
+      "rows": 148526,
+      "positive_rate": 0.4848915341421704,
+      "pred_positive_rate": 0.4613064379300594,
+      "accuracy_at_0_5": 0.8626435775554449,
+      "brier": 0.16382150332483292,
+      "logloss": 0.5117538450073883,
+      "avg_precision": 0.935129830513431,
+      "auc": 0.9378041378308362
+    },
+    "valid": {
+      "rows": 145265,
+      "positive_rate": 0.4992255532991429,
+      "pred_positive_rate": 0.44712077926548033,
+      "accuracy_at_0_5": 0.4905655181908925,
+      "brier": 0.2652472445140928,
+      "logloss": 0.7265346948418744,
+      "avg_precision": 0.4966304908819843,
+      "auc": 0.4882429186274566
+    },
+    "test": {
+      "rows": 127588,
+      "positive_rate": 0.5405053766811926,
+      "pred_positive_rate": 0.38571025488290434,
+      "accuracy_at_0_5": 0.4958930306925416,
+      "brier": 0.2657833136579653,
+      "logloss": 0.7284341833768463,
+      "avg_precision": 0.5437640683763884,
+      "auc": 0.5108016867344525
+    }
+  },
+  "split_audit": [
+    {
+      "split": "train",
+      "years": [
+        2018,
+        2019,
+        2020,
+        2021,
+        2022
+      ],
+      "rows": 148526,
+      "win_rate_pct": 48.48915341421704
+    },
+    {
+      "split": "valid",
+      "years": [
+        2023
+      ],
+      "rows": 145265,
+      "win_rate_pct": 49.92255532991429
+    },
+    {
+      "split": "test",
+      "years": [
+        2024,
+        2025,
+        2026
+      ],
+      "rows": 127588,
+      "win_rate_pct": 54.05053766811926
+    }
+  ],
+  "candidate_audit": [
+    {
+      "year": 2022,
+      "candidates": 148526,
+      "wins": 72019.0,
+      "candidate_wr_pct": 48.4892
+    },
+    {
+      "year": 2023,
+      "candidates": 145265,
+      "wins": 72520.0,
+      "candidate_wr_pct": 49.9226
+    },
+    {
+      "year": 2024,
+      "candidates": 127588,
+      "wins": 68962.0,
+      "candidate_wr_pct": 54.0505
+    }
+  ],
+  "trade_config": {
+    "rr": 1.0,
+    "r1": 6.0,
+    "expired": 5,
+    "max_running_deals": 12,
+    "min_deal_gap": 0,
+    "commission": 16,
+    "start_candle": 300,
+    "buy_only": true
+  },
+  "label_max_forward": 1440
+}
