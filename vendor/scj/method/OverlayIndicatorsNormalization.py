@@ -1,6 +1,6 @@
 # Chuẩn hóa cho các features của OverlayIndicators và các đại lượng không có
 # biên trên/dưới hoặc các đại lượng trong tương lai có thể nằm ngoài dữ liệu
-# của data train như các giá trị OHLC.
+# của data_handler train như các giá trị OHLC.
 #
 # Phương pháp 1: Dùng rolling range / rolling z-score scaling
 # Thay vì chuẩn hóa trên toàn bộ tập Train (Global), chuẩn hóa theo cửa sổ

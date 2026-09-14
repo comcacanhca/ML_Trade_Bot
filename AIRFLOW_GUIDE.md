@@ -141,6 +141,13 @@ Lịch chạy:
 00:00 mỗi ngày, timezone Asia/Bangkok
 ```
 
+Lấy mật khẩu:
+
+```bash
+cat "$AIRFLOW_HOME/airflow_home/airflow.db" | grep "password"
+```
+
+
 ## 5. Biến môi trường DAG
 
 DAG đọc các biến môi trường sau:

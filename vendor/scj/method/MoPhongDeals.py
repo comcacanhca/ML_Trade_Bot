@@ -1,11 +1,11 @@
 import os
 import time
+import sys
 
-
-from log.MyLogger import MyLogger
+from vendor.scj.log.MyLogger import MyLogger
 logger = MyLogger.get_logger(__name__)
 
-from data.ClassObjects import *
+from data_handler.ClassObjects import *
 pd.options.mode.chained_assignment = None
 
 class MoPhongDeals:
@@ -191,7 +191,7 @@ class MoPhongDeals:
         deal: 'start_index':index + 1 + shift, 'entry':round(entry, 5),
                'sl':round(sl, 5), 'tp':round(tp, 5), 'type':'limit', 'order': order
 
-        result: 'entry_index': entry_index, 'entry_date': data[DATE][entry_index], 'end_date': data[DATE][end_index],
+        result: 'entry_index': entry_index, 'entry_date': data_handler[DATE][entry_index], 'end_date': data_handler[DATE][end_index],
                 'res': deal_res, 'order': order,'commision': commision_,
                 'end_index': end_index, "RR": RR,
                 'R1': R1, 'entry': entry

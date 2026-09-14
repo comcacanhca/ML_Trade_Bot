@@ -14,3 +14,5 @@ numba
 shap
 pytest
 ruff
+google-cloud-storage
+MetaTrader5

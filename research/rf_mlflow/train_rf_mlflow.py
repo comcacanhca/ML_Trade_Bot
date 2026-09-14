@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import gc
 import json
 import time
 import warnings
@@ -15,7 +16,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, brier_score_loss, log_loss, roc_auc_score
 
 from config import CFG, PROJECT_ROOT, ensure_dirs
-from data_io import DATE, load_years
+from data_io import DATE, load_year
 from features import RobustClipScaler, build_features, feature_columns
 from labels import buy_labels_next_open
 from mophong_adapter import orders_from_scores, simulate_orders
@@ -46,10 +47,22 @@ def build_cached_dataset(force: bool = False) -> pd.DataFrame:
     cache_file = _cache_file("dataset_features_labels.joblib")
     if cache_file.exists() and not force:
         return joblib.load(cache_file)
-    data = load_years(_years_all())
-    frame = build_features(data)
-    frame = buy_labels_next_open(frame)
-    frame["year"] = pd.to_datetime(frame[DATE]).dt.year.astype(int)
+
+    frames: list[pd.DataFrame] = []
+    for year in _years_all():
+        data_year = load_year(year)
+        frame_year = build_features(data_year)
+        frame_year = buy_labels_next_open(frame_year)
+        frame_year["year"] = pd.to_datetime(frame_year[DATE]).dt.year.astype(int)
+        frames.append(frame_year)
+
+        del data_year, frame_year
+        gc.collect()
+
+    if not frames:
+        raise ValueError("No years requested")
+
+    frame = pd.concat(frames, ignore_index=True).sort_values(DATE).reset_index(drop=True)
     joblib.dump(frame, cache_file, compress=3)
     return frame
 
@@ -180,7 +193,7 @@ def _add_train_explainability(
     """Create explainability charts for the trained RF model.
 
     Inputs are already transformed/scaled using train-fitted scaler. This avoids
-    leakage because no fitting is performed on validation/test data here.
+    leakage because no fitting is performed on validation/test data_handler here.
     """
 
     out_dir.mkdir(parents=True, exist_ok=True)

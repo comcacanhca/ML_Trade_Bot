@@ -18,17 +18,11 @@ GCS_KEY_FILE_WIN = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_WIN", rf"{PROJECT_W
 
 
 def _run_windows_mt5_ingestion() -> None:
-    bucket = os.getenv("GCS_BUCKET")
-    if not bucket:
-        raise RuntimeError("Missing GCS_BUCKET in Airflow environment.")
-
     env = os.environ.copy()
     env.update(
         {
+            "PYTHONPATH": f"{PROJECT_WSL};{PROJECT_WIN}",  # Thêm cả 2 định dạng đường dẫn để đảm bảo
             "ML_TRADE_DATA_DIR": DATA_DIR_WIN,
-            "GOOGLE_APPLICATION_CREDENTIALS": GCS_KEY_FILE_WIN,
-            "GCS_BUCKET": bucket,
-            "GCS_PREFIX": os.getenv("GCS_PREFIX", "raw/1M"),
             "MT5_SYMBOL": os.getenv("MT5_SYMBOL", "XAUUSD"),
             "MT5_SYMBOL_FILE_PREFIX": os.getenv("MT5_SYMBOL_FILE_PREFIX", "XAUUSDm"),
             "MT5_LOOKBACK_DAYS": os.getenv("MT5_LOOKBACK_DAYS", "7"),
@@ -37,6 +31,8 @@ def _run_windows_mt5_ingestion() -> None:
 
     cmd = [
         WINDOWS_PYTHON_EXE,
+        # 2. Sử dụng cờ -m để chạy script như một module (Khuyên dùng khi chạy script trong package)
+        # HOẶC vẫn giữ SCRIPT_WIN nếu giữ nguyên cấu trúc truyền file trực tiếp
         SCRIPT_WIN,
         "--symbol",
         env["MT5_SYMBOL"],
@@ -44,15 +40,9 @@ def _run_windows_mt5_ingestion() -> None:
         env["MT5_SYMBOL_FILE_PREFIX"],
         "--data-dir",
         DATA_DIR_WIN,
-        "--gcs-bucket",
-        bucket,
-        "--gcs-prefix",
-        env["GCS_PREFIX"],
-        "--gcs-key-file",
-        GCS_KEY_FILE_WIN,
-        "--lookback-days",
         env["MT5_LOOKBACK_DAYS"],
     ]
+
 
     result = subprocess.run(
         cmd,
@@ -76,7 +66,7 @@ with DAG(
     catchup=False,
     max_active_runs=1,
     dagrun_timeout=timedelta(hours=2),
-    tags=["mt5", "xauusd", "gcs", "rawdata"],
+    tags=["mt5", "xauusd", "rawdata"],
 ) as dag:
     ingest_rawdata_to_gcs = PythonOperator(
         task_id="ingest_rawdata_to_gcs",

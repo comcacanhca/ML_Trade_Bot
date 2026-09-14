@@ -6,7 +6,7 @@ stages:
       cd research/rf_mlflow;
       python mlops_build_cache.py"
     deps:
-      - ${data.raw_dir}
+      - ${data_handler.raw_dir}
       - research/rf_mlflow/mlops_build_cache.py
       - research/rf_mlflow/research_random50_initial_features.py
       - research/rf_mlflow/features.py
@@ -14,7 +14,7 @@ stages:
       - research/rf_mlflow/data_io.py
       - vendor/scj/method/OverlayIndicatorsNormalization.py
     params:
-      - data.raw_dir
+      - data_handler.raw_dir
       - research.rolling_scaler
     outs:
       - research/rf_mlflow/cache

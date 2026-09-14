@@ -239,8 +239,8 @@ def chiaData(csv_file, quantity):
 #print(download_data_from_to(from_='2023-01-02', to_='2023-05-03'))
 # start_date = "2015-02-03"
 # end_date = "2022-03-03"
-# filtered_data = get_data_from_to(r'E:\filter_tradeBot\data\output\2022_new.csv', start_date, end_date)
+# filtered_data = get_data_from_to(r'E:\filter_tradeBot\data_handler\output\2022_new.csv', start_date, end_date)
 # print(filtered_data)
-# data = pd.read_csv(r'E:\filter_tradeBot\data\output\fullyear.csv')
-# data[date] = pd.to_datetime(data[date], format="mixed")
-# data.to_csv(r'E:\filter_tradeBot\data\output\fullyear.csv', index=False)
+# data_handler = pd.read_csv(r'E:\filter_tradeBot\data_handler\output\fullyear.csv')
+# data_handler[date] = pd.to_datetime(data_handler[date], format="mixed")
+# data_handler.to_csv(r'E:\filter_tradeBot\data_handler\output\fullyear.csv', index=False)

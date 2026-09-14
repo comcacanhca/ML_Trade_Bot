@@ -63,7 +63,7 @@ def register_candidate(status: str, model_name: str) -> str:
 
 @dsl.pipeline(name="ml-trade-bot-train-evaluate-deploy")
 def train_evaluate_deploy_pipeline(
-    data_dir: str = "/mnt/data/1M",
+    data_dir: str = "/mnt/data_handler/1M",
     mlflow_tracking_uri: str = "sqlite:///mlflow.db",
     variant: str = "products",
     top_n: int = 10,

@@ -2,9 +2,28 @@ from __future__ import annotations
 
 import argparse
 import json
+import gc
+import sys
 import time
 import warnings
 from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+RESEARCH_DIR = REPO_ROOT / "research"
+RF_MLFLOW_DIR = RESEARCH_DIR / "rf_mlflow"
+VENDOR_SCJ_DIR = REPO_ROOT / "vendor" / "scj"
+for path in (REPO_ROOT, RESEARCH_DIR, RF_MLFLOW_DIR, VENDOR_SCJ_DIR):
+    if str(path) not in sys.path:
+        sys.path.insert(0, str(path))
+
+try:
+    import log as _vendor_log
+    from log.MyLogger import MyLogger as _VendorMyLogger
+
+    if not hasattr(getattr(_vendor_log, "MyLogger", None), "get_logger"):
+        _vendor_log.MyLogger = _VendorMyLogger
+except Exception:
+    pass
 
 import joblib
 import numpy as np
@@ -15,25 +34,117 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, brier_score_loss, log_loss, roc_auc_score
 from sklearn.model_selection import RandomizedSearchCV, StratifiedKFold
 
-from config import CFG, PROJECT_ROOT, ensure_dirs
-from features import RobustClipScaler, named_feature_sets
-from mophong_adapter import orders_from_scores, simulate_orders
-from plots import plot_model_diagnostics, plot_threshold_curve, plot_yearly_mophong
-from train_rf_mlflow import _candidate_dataset, _proxy_threshold_table, _score_full_frame, build_cached_dataset
+from research.config import CFG, ensure_dirs
+from research.data_io import DATE, load_year, year_path
+from research.features import RobustClipScaler, build_features, named_feature_sets
+from research.labels import buy_labels_next_open
+from research.mophong_adapter import orders_from_scores, simulate_orders
+from research.plots import plot_model_diagnostics, plot_threshold_curve, plot_yearly_mophong
+from train_rf_mlflow import _candidate_dataset, _proxy_threshold_table, _score_full_frame
 
 
 FEATURE_SET = "fs03_lags_cycle"
+YEAR_CACHE_WARMUP_ROWS = 20_000
 
 
 def _mlflow():
     try:
         import mlflow
 
-        mlflow.set_tracking_uri(f"sqlite:///{(PROJECT_ROOT / 'mlflow.db').as_posix()}")
+        mlflow.set_tracking_uri(f"sqlite:///{(REPO_ROOT / 'mlflow.db').as_posix()}")
         mlflow.set_experiment(CFG.experiment_name)
         return mlflow
     except Exception:
         return None
+
+
+def _years_all() -> tuple[int, ...]:
+    return CFG.split.train_years + CFG.split.valid_years + CFG.split.test_years
+
+
+def _cache_file(name: str) -> Path:
+    return RF_MLFLOW_DIR / "cache" / name
+
+
+def _year_cache_file(year: int) -> Path:
+    return _cache_file(f"dataset_features_labels_{year}.joblib")
+
+
+def _load_optional_year(year: int) -> pd.DataFrame | None:
+    if not year_path(year).exists():
+        return None
+    return load_year(year)
+
+
+def _build_year_dataset(year: int) -> pd.DataFrame:
+    """Build one target year with only boundary context loaded.
+
+    The previous-year tail preserves rolling/EMA/HTF features at the start of
+    the target year. The next-year head preserves labels near year-end, because
+    labels can look forward up to ``CFG.label_max_forward`` M1 rows.
+    """
+
+    parts: list[pd.DataFrame] = []
+
+    prev_frame = _load_optional_year(year - 1)
+    if prev_frame is not None and not prev_frame.empty:
+        parts.append(prev_frame.tail(YEAR_CACHE_WARMUP_ROWS))
+
+    target_frame = load_year(year)
+    parts.append(target_frame)
+
+    next_frame = _load_optional_year(year + 1)
+    if next_frame is not None and not next_frame.empty:
+        parts.append(next_frame.head(int(CFG.label_max_forward) + 5))
+
+    raw = pd.concat(parts, ignore_index=True).sort_values(DATE).reset_index(drop=True)
+    frame = build_features(raw)
+    frame = buy_labels_next_open(frame)
+    frame["year"] = pd.to_datetime(frame[DATE]).dt.year.astype(int)
+    frame = frame.loc[frame["year"] == year].copy().reset_index(drop=True)
+
+    del raw, parts, target_frame, prev_frame, next_frame
+    gc.collect()
+    return frame
+
+
+def build_cached_dataset(force: bool = False) -> pd.DataFrame:
+    """Build/read fs03 old-scaling dataset cache by year to avoid RAM spikes.
+
+    This intentionally avoids the old all-years build path from
+    ``train_rf_mlflow.build_cached_dataset()``, which loaded every raw year
+    before feature engineering.
+    """
+
+    ensure_dirs()
+    _cache_file("dummy").parent.mkdir(parents=True, exist_ok=True)
+    frames: list[pd.DataFrame] = []
+    built_years: list[int] = []
+
+    for year in _years_all():
+        cache_file = _year_cache_file(year)
+        if cache_file.exists() and not force:
+            print({"phase": "load_year_cache", "year": year, "path": str(cache_file)}, flush=True)
+            frame = joblib.load(cache_file)
+        else:
+            print({"phase": "build_year_cache", "year": year, "path": str(cache_file)}, flush=True)
+            frame = _build_year_dataset(year)
+            joblib.dump(frame, cache_file, compress=3)
+            built_years.append(year)
+        frames.append(frame)
+
+    combined = pd.concat(frames, ignore_index=True).sort_values(DATE).reset_index(drop=True)
+    print(
+        {
+            "phase": "dataset_cache_ready",
+            "years": list(_years_all()),
+            "built_years": built_years,
+            "rows": int(len(combined)),
+            "cache_mode": "per_year",
+        },
+        flush=True,
+    )
+    return combined
 
 
 def _param_distributions() -> dict:

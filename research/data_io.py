@@ -43,6 +43,7 @@ def load_year(year: int) -> pd.DataFrame:
     data = get_data_from_csv(str(path))
     if data.index.name is not None or DATE in data.index.names:
         data = data.reset_index(drop=True)
+
     keep = [col for col in [DATE, OPEN, LOW, HIGH, CLOSE, VOLUME] if col in data.columns]
     data = data[keep].dropna(subset=BASE_COLUMNS).copy()
     data[DATE] = pd.to_datetime(data[DATE], errors="coerce")

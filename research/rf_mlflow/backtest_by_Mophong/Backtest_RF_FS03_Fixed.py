@@ -23,7 +23,7 @@ for path in [PROJECT_ROOT, RF_MLFLOW_DIR]:
         sys.path.insert(0, str(path))
 
 from config import CFG  # noqa: E402
-from data import CLOSE, DATE, HIGH, LOW, MAU_NEN, OPEN  # noqa: E402
+from data_handler import CLOSE, DATE, HIGH, LOW, MAU_NEN, OPEN  # noqa: E402
 from data_io import load_years, parse_years  # noqa: E402
 from method.MoPhongDeals import MoPhongDeals  # noqa: E402
 
@@ -84,7 +84,7 @@ def _score_frame(frame: pd.DataFrame, bundle: dict) -> np.ndarray:
     features = list(bundle["feature_columns"])
     missing = [col for col in features if col not in frame.columns]
     if missing:
-        raise KeyError(f"Prepared data missing model features: {missing[:20]}")
+        raise KeyError(f"Prepared data_handler missing model features: {missing[:20]}")
 
     valid = frame[features].notna().all(axis=1).to_numpy()
     scores = np.full(len(frame), np.nan, dtype=float)
@@ -106,7 +106,7 @@ def build_fs03_features(data: pd.DataFrame) -> pd.DataFrame:
 
     The generic build_features() path creates hundreds of BB/overlay columns.
     For this model that is unnecessary and can allocate >800MB in one pandas
-    consolidation step on a single year of M1 data.
+    consolidation step on a single year of M1 data_handler.
     """
     out = data[[DATE, OPEN, LOW, HIGH, CLOSE]].copy()
     point = 100.0

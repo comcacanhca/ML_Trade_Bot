@@ -16,7 +16,6 @@ if str(VENDOR_SCJ_DIR) not in sys.path:
 DATA_DIR = Path(os.getenv("ML_TRADE_DATA_DIR", str(REPO_ROOT / "data" / "raw" / "1M")))
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", f"sqlite:///{REPO_ROOT / 'mlflow.db'}")
 
-
 @dataclass(frozen=True)
 class TradeConfig:
     rr: float = 1.0

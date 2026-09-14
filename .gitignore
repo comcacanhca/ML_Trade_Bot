@@ -7,7 +7,7 @@ __pycache__/
 .venv/
 venv/
 
-# local data/artifacts; version through DVC instead of git
+# local data_handler/artifacts; version through DVC instead of git
 data/raw/**
 data/processed/**
 models/**
@@ -17,6 +17,9 @@ mlruns/
 mlflow.db
 *.log
 *.err.log
+t-bounty-508213-u7-f4627e44cf81.json
+*service-account*.json
+*gcp-key*.json
 research/rf_mlflow/cache/**
 research/rf_mlflow/models/**
 research/rf_mlflow/outputs/**
