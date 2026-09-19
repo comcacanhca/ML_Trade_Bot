@@ -2,7 +2,7 @@ name: fs03-optuna-local-windows
 on:
   push:
     branches: [main, master]
-    
+
     paths:
       - "pipelines/_optuna/**"
       - "research/rf_mlflow/reproduce_fs03_fixed_params.py"
@@ -40,8 +40,8 @@ on:
 concurrency:
   group: fs03-optuna-local-windows-${{ github.ref }}
   cancel-in-progress: true
-  
-jobs: 
+
+jobs:
   optuna-pipeline:
     name: FS03 LightGBM Optuna pipeline on local Windows runner
     runs-on: self-hosted
@@ -62,49 +62,64 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Use Python 3.11
+      - name: Show runner and Python environment
         shell: powershell
         run: |
+          Write-Host "=== Operating system ==="
+          Get-CimInstance Win32_OperatingSystem |
+            Select-Object Caption, Version, OSArchitecture
+
+          Write-Host "`n=== Python installations ==="
+          py -0p
+
+          Write-Host "`n=== Python 3.11 environment ==="
           py -3.11 --version
-          py -3.11 -m pip install --upgrade pip
-   
-      - name: Show runner context
-        run: |
-          python --version
+          py -3.11 -c "import sys, platform; print('Executable:', sys.executable); print('Prefix:', sys.prefix); print('Base prefix:', sys.base_prefix); print('Platform:', platform.platform()); print('Architecture:', platform.architecture())"
+          py -3.11 -m pip --version
+
+          Write-Host "`n=== Runner context ==="
           Get-Location
           Write-Host "Event: $env:GITHUB_EVENT_NAME"
+          Write-Host "Runner OS: $env:RUNNER_OS"
+          Write-Host "Runner name: $env:RUNNER_NAME"
           Write-Host "Trials: $env:OPTUNA_N_TRIALS"
           Write-Host "Max train rows: $env:OPTUNA_MAX_TRAIN_ROWS"
           Write-Host "Skip simulate: $env:OPTUNA_SKIP_SIMULATE"
           Write-Host "Enable MLflow: $env:OPTUNA_ENABLE_MLFLOW"
 
       - name: Install dependencies
+        shell: powershell
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          py -3.11 -m pip install --upgrade pip
+          py -3.11 -m pip install -r requirements.txt
 
       - name: Static syntax check
+        shell: powershell
         run: |
           $files = Get-ChildItem -LiteralPath "pipelines/_optuna" -Filter "*.py" | ForEach-Object { $_.FullName }
-          python -m py_compile @files
+          py -3.11 -m py_compile @files
 
       - name: Lint Optuna pipeline
+        shell: powershell
         run: |
-          ruff check pipelines/_optuna
+          py -3.11 -m ruff check pipelines/_optuna
 
       - name: CLI smoke tests
+        shell: powershell
         run: |
-          python pipelines/_optuna/data_processing.py --help
-          python pipelines/_optuna/train_optuna_fs03.py --help
-          python pipelines/_optuna/evaluate_fs03.py --help
-          python pipelines/_optuna/run_fs03_optuna_pipeline.py --help
+          py -3.11 pipelines/_optuna/data_processing.py --help
+          py -3.11 pipelines/_optuna/train_optuna_fs03.py --help
+          py -3.11 pipelines/_optuna/evaluate_fs03.py --help
+          py -3.11 pipelines/_optuna/run_fs03_optuna_pipeline.py --help
 
       - name: Build DVC feature store
+        shell: powershell
         run: |
-          dvc repro fs03_feature_store
-          dvc status --no-commit
+          py -3.11 -m dvc repro fs03_feature_store
+          py -3.11 -m dvc status --no-commit
 
       - name: Run FS03 Optuna CI pipeline
+        shell: powershell
         run: |
           $argsList = @(
             "pipelines/_optuna/run_fs03_optuna_pipeline.py",
@@ -123,7 +138,7 @@ jobs:
             $argsList += "--enable-mlflow"
           }
 
-          python @argsList
+          py -3.11 @argsList
 
       - name: Upload Optuna CI artifacts
         if: always()
