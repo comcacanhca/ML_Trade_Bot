@@ -61,7 +61,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
+        
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements.txt
+          
       - name: Show runner and Python environment
         shell: powershell
         run: |
@@ -90,19 +97,20 @@ jobs:
       - name: Install dependencies
         shell: powershell
         run: |
-          py -3.11 -m pip install --upgrade pip
-          py -3.11 -m pip install -r requirements.txt
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
 
       - name: Static syntax check
         shell: powershell
         run: |
-          $files = Get-ChildItem -LiteralPath "pipelines/_optuna" -Filter "*.py" | ForEach-Object { $_.FullName }
-          py -3.11 -m py_compile @files
+          $files = Get-ChildItem -LiteralPath "pipelines/_optuna" -Filter "*.py" |
+            ForEach-Object { $_.FullName }
+          python -m py_compile @files
 
       - name: Lint Optuna pipeline
         shell: powershell
         run: |
-          py -3.11 -m ruff check pipelines/_optuna
+          python -m ruff check pipelines/_optuna
 
       - name: CLI smoke tests
         shell: powershell
@@ -115,8 +123,8 @@ jobs:
       - name: Build DVC feature store
         shell: powershell
         run: |
-          py -3.11 -m dvc repro fs03_feature_store
-          py -3.11 -m dvc status --no-commit
+          python -m dvc repro fs03_feature_store
+          python -m dvc status --no-commit
 
       - name: Run FS03 Optuna CI pipeline
         shell: powershell
