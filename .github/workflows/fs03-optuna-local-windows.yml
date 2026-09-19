@@ -50,7 +50,7 @@ jobs:
       run:
         shell: powershell
     env:
-      PYTHONPATH: research;research/rf_mlflow;vendor/scj
+      PYTHONPATH: C:\Users\admin\AppData\Local\Programs\Python\Python311
       MLFLOW_TRACKING_URI: sqlite:///mlflow.db
       MLFLOW_ARTIFACT_ROOT: mlruns
       OPTUNA_N_TRIALS: ${{ github.event_name == 'workflow_dispatch' && inputs.n_trials || '3' }}
