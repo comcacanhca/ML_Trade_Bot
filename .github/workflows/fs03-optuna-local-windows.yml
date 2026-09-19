@@ -2,6 +2,7 @@ name: fs03-optuna-local-windows
 on:
   push:
     branches: [main, master]
+
     paths:
       - "pipelines/_optuna/**"
       - "research/rf_mlflow/reproduce_fs03_fixed_params.py"
@@ -61,77 +62,37 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure local Python 3.11 path
-        shell: powershell
-        run: |
-          $pythonRoot = "C:\Users\admin\AppData\Local\Programs\Python\Python311"
-          $pythonBin = "$pythonRoot\python.exe"
-          $scriptsDir = "$pythonRoot\Scripts"
-
-          if (Test-Path -LiteralPath $pythonBin) {
-            $pythonRoot | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-            $scriptsDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-            Write-Host "Added to PATH: $pythonRoot"
-            Write-Host "Added to PATH: $scriptsDir"
-          } else {
-            Write-Host "Python 3.11 not found at: $pythonBin"
-          }
-
-      - name: Validate local Python 3.11
+      - name: Validate system Python 3.11
         shell: powershell
         run: |
           $ErrorActionPreference = "Stop"
+          $pythonExe = "C:\Program Files\Python311\python.exe"
+          $pythonDir = "C:\Program Files\Python311"
+          $scriptsDir = Join-Path $pythonDir "Scripts"
 
-          $pythonCandidates = @(
-            "C:\Users\admin\AppData\Local\Programs\Python\Python311\python.exe",
-            "C:\Program Files\Python311\python.exe",
-            "C:\Python311\python.exe",
-            "$env:LocalAppData\Programs\Python\Python311\python.exe"
-          )
-
-          Write-Host "=== Checking Python candidates ==="
-          foreach ($candidate in $pythonCandidates) {
-            Write-Host "$candidate => $(Test-Path -LiteralPath $candidate)"
-          }
-
-          $pythonExe = $pythonCandidates |
-            Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
-            Select-Object -First 1
-
-          if (-not $pythonExe) {
-            $command = Get-Command python.exe -ErrorAction SilentlyContinue
-            if ($command -and (Test-Path -LiteralPath $command.Source)) {
-              $pythonExe = $command.Source
-            }
-          }
-
-          if (-not $pythonExe) {
-            Write-Host "=== Runner user context ==="
+          try {
+            $pythonItem = Get-Item -LiteralPath $pythonExe -ErrorAction Stop
+          } catch {
             whoami
-            Write-Host "USERNAME=$env:USERNAME"
-            Write-Host "LOCALAPPDATA=$env:LOCALAPPDATA"
-            throw "Không tìm thấy Python 3.11 trên self-hosted runner. Hãy cài Python 3.11 x64 cho tài khoản chạy GitHub Actions."
+            Write-Host "Python expected at: $pythonExe"
+            Write-Host "Access or installation check failed: $($_.Exception.Message)"
+            throw "Python 3.11 was not found or is not accessible at C:\Program Files\Python311. Install Python 3.11 for all users and grant the runner account read/execute permission."
           }
 
-          $version = & $pythonExe -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"
-          $version = $version.Trim()
+          if (-not $pythonItem.PSIsContainer -and -not $pythonItem.Exists) {
+            throw "Python executable does not exist: $pythonExe"
+          }
 
+          $version = (& $pythonExe -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')").Trim()
           if ($version -ne "3.11") {
-            throw "Python không đúng phiên bản 3.11: $version"
+            throw "Python is not version 3.11: $version ($pythonExe)"
           }
 
           "PYTHON_EXE=$pythonExe" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8
           "PYTHON_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8
-
-          $pythonDir = Split-Path -Parent $pythonExe
-          $pythonScriptsDir = Join-Path $pythonDir "Scripts"
-
-          if (Test-Path -LiteralPath $pythonDir) {
-            $pythonDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          }
-
-          if (Test-Path -LiteralPath $pythonScriptsDir) {
-            $pythonScriptsDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          $pythonDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          if (Test-Path -LiteralPath $scriptsDir -ErrorAction SilentlyContinue) {
+            $scriptsDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           }
 
           Write-Host "Python executable: $pythonExe"
@@ -142,22 +103,13 @@ jobs:
         shell: powershell
         run: |
           Write-Host "=== Operating system ==="
-          Get-CimInstance Win32_OperatingSystem |
-            Select-Object Caption, Version, OSArchitecture
-
-          Write-Host "`n=== Python installations ==="
-          if (Get-Command py -ErrorAction SilentlyContinue) {
-            py -0p
-          } else {
-            Write-Host "py launcher not available"
-          }
-
-          Write-Host "`n=== Python 3.11 environment ==="
-          & $env:PYTHON_EXE --version
-          & $env:PYTHON_EXE -c "import sys, platform; print('Executable:', sys.executable); print('Prefix:', sys.prefix); print('Base prefix:', sys.base_prefix); print('Platform:', platform.platform())"
+          Get-CimInstance Win32_OperatingSystem | Select-Object Caption, Version, OSArchitecture
+          Write-Host "=== Runner identity ==="
+          whoami
+          Write-Host "=== Python environment ==="
+          & $env:PYTHON_EXE -c "import sys, platform; print('Executable:', sys.executable); print('Version:', sys.version); print('Platform:', platform.platform())"
           & $env:PYTHON_EXE -m pip --version
-
-          Write-Host "`n=== Runner context ==="
+          Write-Host "=== Runner context ==="
           Get-Location
           Write-Host "Event: $env:GITHUB_EVENT_NAME"
           Write-Host "Runner OS: $env:RUNNER_OS"
@@ -176,9 +128,7 @@ jobs:
       - name: Static syntax check
         shell: powershell
         run: |
-          $files = Get-ChildItem -LiteralPath "pipelines/_optuna" -Filter "*.py" |
-            ForEach-Object { $_.FullName }
-
+          $files = Get-ChildItem -LiteralPath "pipelines/_optuna" -Filter "*.py" | ForEach-Object { $_.FullName }
           & $env:PYTHON_EXE -m py_compile @files
 
       - name: Lint Optuna pipeline
@@ -203,23 +153,12 @@ jobs:
       - name: Run FS03 Optuna CI pipeline
         shell: powershell
         run: |
-          $argsList = @(
-            "pipelines/_optuna/run_fs03_optuna_pipeline.py",
-            "--n-trials", "$env:OPTUNA_N_TRIALS"
-          )
-
+          $argsList = @("pipelines/_optuna/run_fs03_optuna_pipeline.py", "--n-trials", "$env:OPTUNA_N_TRIALS")
           if ($env:OPTUNA_MAX_TRAIN_ROWS -and $env:OPTUNA_MAX_TRAIN_ROWS.Trim() -ne "") {
             $argsList += @("--max-train-rows", "$env:OPTUNA_MAX_TRAIN_ROWS")
           }
-
-          if ($env:OPTUNA_SKIP_SIMULATE -eq "true" -or $env:OPTUNA_SKIP_SIMULATE -eq "True") {
-            $argsList += "--skip-simulate"
-          }
-
-          if ($env:OPTUNA_ENABLE_MLFLOW -eq "true" -or $env:OPTUNA_ENABLE_MLFLOW -eq "True") {
-            $argsList += "--enable-mlflow"
-          }
-
+          if ($env:OPTUNA_SKIP_SIMULATE -match "^(true|True)$") { $argsList += "--skip-simulate" }
+          if ($env:OPTUNA_ENABLE_MLFLOW -match "^(true|True)$") { $argsList += "--enable-mlflow" }
           & $env:PYTHON_EXE @argsList
 
       - name: Upload Optuna CI artifacts
