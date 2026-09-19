@@ -44,7 +44,7 @@ concurrency:
 jobs:
   optuna-pipeline:
     name: FS03 LightGBM Optuna pipeline on local Windows runner
-    runs-on: self-hosted
+    runs-on: [self-hosted, windows-latest]
     timeout-minutes: 360
     defaults:
       run:
@@ -98,7 +98,51 @@ jobs:
           Write-Host "Python executable: $pythonExe"
           & $pythonExe --version
           & $pythonExe -m pip --version
+      - name: Ensure Python 3.11 is installed
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Stop"
+          $pythonExe = "C:\Program Files\Python311\python.exe"
+          $pythonDir = "C:\Program Files\Python311"
+          $scriptsDir = Join-Path $pythonDir "Scripts"
 
+          if (-not (Test-Path -LiteralPath $pythonExe -PathType Leaf)) {
+            Write-Host "Python 3.11 not found at $pythonExe. Installing..."
+            $installerUrl = "https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe"
+            $installerPath = Join-Path $env:TEMP "python311-amd64.exe"
+
+            if (Get-Command winget -ErrorAction SilentlyContinue) {
+              & winget install --id Python.Python.3.11 --exact --accept-source-agreements --accept-package-agreements --silent --disable-interactivity
+            } else {
+              $ProgressPreference = 'SilentlyContinue'
+              Invoke-WebRequest -Uri $installerUrl -OutFile $installerPath
+              Start-Process -FilePath $installerPath -ArgumentList @(
+                '/quiet',
+                'InstallAllUsers=1',
+                'PrependPath=1',
+                'Include_test=0',
+                'SimpleInstall=1'
+              ) -Wait -NoNewWindow
+            }
+
+            if (-not (Test-Path -LiteralPath $pythonExe -PathType Leaf)) {
+              throw "Python 3.11 installation failed."
+            }
+          }
+
+          $version = (& $pythonExe -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')").Trim()
+          if ($version -ne "3.11") {
+            throw "Python is not version 3.11: $version"
+          }
+
+          "PYTHON_EXE=$pythonExe" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8
+          $pythonDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          if (Test-Path -LiteralPath $scriptsDir -ErrorAction SilentlyContinue) {
+            $scriptsDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          }
+
+          Write-Host "Python installed: $pythonExe"
+          & $pythonExe --version
       - name: Show runner and Python environment
         shell: powershell
         run: |
