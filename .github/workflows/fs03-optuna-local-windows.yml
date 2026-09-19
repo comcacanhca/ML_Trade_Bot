@@ -2,7 +2,6 @@ name: fs03-optuna-local-windows
 on:
   push:
     branches: [main, master]
-
     paths:
       - "pipelines/_optuna/**"
       - "research/rf_mlflow/reproduce_fs03_fixed_params.py"
@@ -50,7 +49,7 @@ jobs:
       run:
         shell: powershell
     env:
-      PYTHONPATH: C:\Users\admin\AppData\Local\Programs\Python\Python311
+      PYTHONPATH: research;research/rf_mlflow;vendor/scj
       MLFLOW_TRACKING_URI: sqlite:///mlflow.db
       MLFLOW_ARTIFACT_ROOT: mlruns
       OPTUNA_N_TRIALS: ${{ github.event_name == 'workflow_dispatch' && inputs.n_trials || '3' }}
@@ -61,35 +60,61 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      
+
+      - name: Configure local Python 3.11 path
+        shell: powershell
+        run: |
+          $pythonRoot = "C:\Users\admin\AppData\Local\Programs\Python\Python311"
+          $pythonBin = "$pythonRoot\python.exe"
+          $scriptsDir = "$pythonRoot\Scripts"
+
+          if (Test-Path -LiteralPath $pythonBin) {
+            $pythonRoot | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+            $scriptsDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+            Write-Host "Added to PATH: $pythonRoot"
+            Write-Host "Added to PATH: $scriptsDir"
+          } else {
+            Write-Host "Python 3.11 not found at: $pythonBin"
+          }
+
       - name: Validate local Python 3.11
         shell: powershell
         run: |
           $ErrorActionPreference = "Stop"
 
           $pythonCandidates = @(
+            "C:\Users\admin\AppData\Local\Programs\Python\Python311\python.exe",
             "C:\Program Files\Python311\python.exe",
             "C:\Python311\python.exe",
             "$env:LocalAppData\Programs\Python\Python311\python.exe"
           )
 
+          Write-Host "=== Checking Python candidates ==="
+          foreach ($candidate in $pythonCandidates) {
+            Write-Host "$candidate => $(Test-Path -LiteralPath $candidate)"
+          }
+
           $pythonExe = $pythonCandidates |
-            Where-Object { Test-Path $_ } |
+            Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
             Select-Object -First 1
 
           if (-not $pythonExe) {
-            $command = Get-Command python -ErrorAction SilentlyContinue
-
-            if ($command) {
+            $command = Get-Command python.exe -ErrorAction SilentlyContinue
+            if ($command -and (Test-Path -LiteralPath $command.Source)) {
               $pythonExe = $command.Source
             }
           }
 
           if (-not $pythonExe) {
+            Write-Host "=== Runner user context ==="
+            whoami
+            Write-Host "USERNAME=$env:USERNAME"
+            Write-Host "LOCALAPPDATA=$env:LOCALAPPDATA"
             throw "Không tìm thấy Python 3.11 trên self-hosted runner. Hãy cài Python 3.11 x64 cho tài khoản chạy GitHub Actions."
           }
 
           $version = & $pythonExe -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"
+          $version = $version.Trim()
 
           if ($version -ne "3.11") {
             throw "Python không đúng phiên bản 3.11: $version"
@@ -98,27 +123,39 @@ jobs:
           "PYTHON_EXE=$pythonExe" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8
           "PYTHON_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8
 
+          $pythonDir = Split-Path -Parent $pythonExe
+          $pythonScriptsDir = Join-Path $pythonDir "Scripts"
+
+          if (Test-Path -LiteralPath $pythonDir) {
+            $pythonDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          }
+
+          if (Test-Path -LiteralPath $pythonScriptsDir) {
+            $pythonScriptsDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          }
+
           Write-Host "Python executable: $pythonExe"
           & $pythonExe --version
           & $pythonExe -m pip --version
-          
+
       - name: Show runner and Python environment
         shell: powershell
         run: |
-          $env:Path = "C:\Users\admin\AppData\Local\Programs\Python\Python311;C:\Users\admin\AppData\Local\Programs\Python\Python311\Scripts;" + $env:Path
-          python --version
           Write-Host "=== Operating system ==="
           Get-CimInstance Win32_OperatingSystem |
             Select-Object Caption, Version, OSArchitecture
 
-
           Write-Host "`n=== Python installations ==="
-          py -0p
+          if (Get-Command py -ErrorAction SilentlyContinue) {
+            py -0p
+          } else {
+            Write-Host "py launcher not available"
+          }
 
           Write-Host "`n=== Python 3.11 environment ==="
-          py -3.11 --version
-          py -3.11 -c "import sys, platform; print('Executable:', sys.executable); print('Prefix:', sys.prefix); print('Base prefix:', sys.base_prefix); print('Platform:', platform.platform()); print('Architecture:', platform.architecture())"
-          py -3.11 -m pip --version
+          & $env:PYTHON_EXE --version
+          & $env:PYTHON_EXE -c "import sys, platform; print('Executable:', sys.executable); print('Prefix:', sys.prefix); print('Base prefix:', sys.base_prefix); print('Platform:', platform.platform())"
+          & $env:PYTHON_EXE -m pip --version
 
           Write-Host "`n=== Runner context ==="
           Get-Location
@@ -147,21 +184,21 @@ jobs:
       - name: Lint Optuna pipeline
         shell: powershell
         run: |
-          python -m ruff check pipelines/_optuna
+          & $env:PYTHON_EXE -m ruff check pipelines/_optuna
 
       - name: CLI smoke tests
         shell: powershell
         run: |
-          py -3.11 pipelines/_optuna/data_processing.py --help
-          py -3.11 pipelines/_optuna/train_optuna_fs03.py --help
-          py -3.11 pipelines/_optuna/evaluate_fs03.py --help
-          py -3.11 pipelines/_optuna/run_fs03_optuna_pipeline.py --help
+          & $env:PYTHON_EXE pipelines/_optuna/data_processing.py --help
+          & $env:PYTHON_EXE pipelines/_optuna/train_optuna_fs03.py --help
+          & $env:PYTHON_EXE pipelines/_optuna/evaluate_fs03.py --help
+          & $env:PYTHON_EXE pipelines/_optuna/run_fs03_optuna_pipeline.py --help
 
       - name: Build DVC feature store
         shell: powershell
         run: |
-          python -m dvc repro fs03_feature_store
-          python -m dvc status --no-commit
+          & $env:PYTHON_EXE -m dvc repro fs03_feature_store
+          & $env:PYTHON_EXE -m dvc status --no-commit
 
       - name: Run FS03 Optuna CI pipeline
         shell: powershell
@@ -183,7 +220,7 @@ jobs:
             $argsList += "--enable-mlflow"
           }
 
-          py -3.11 @argsList
+          & $env:PYTHON_EXE @argsList
 
       - name: Upload Optuna CI artifacts
         if: always()
