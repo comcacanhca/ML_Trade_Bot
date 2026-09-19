@@ -62,87 +62,99 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Validate system Python 3.11
+      - name: Ensure Python 3.11 is installed
         shell: powershell
         run: |
           $ErrorActionPreference = "Stop"
+
           $pythonExe = "C:\Program Files\Python311\python.exe"
           $pythonDir = "C:\Program Files\Python311"
           $scriptsDir = Join-Path $pythonDir "Scripts"
+          $installerUrl = "https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe"
+          $installerPath = Join-Path $env:TEMP "python-3.11.9-amd64.exe"
 
-          try {
-            $pythonItem = Get-Item -LiteralPath $pythonExe -ErrorAction Stop
-          } catch {
-            whoami
-            Write-Host "Python expected at: $pythonExe"
-            Write-Host "Access or installation check failed: $($_.Exception.Message)"
-            throw "Python 3.11 was not found or is not accessible at C:\Program Files\Python311. Install Python 3.11 for all users and grant the runner account read/execute permission."
+          if (-not (Test-Path -LiteralPath $pythonExe -PathType Leaf)) {
+            Write-Host "Python 3.11 was not found. Installing..."
+
+            $winget = Get-Command winget -ErrorAction SilentlyContinue
+
+            if ($null -ne $winget) {
+              Write-Host "Installing Python with winget..."
+              & $winget.Source install `
+                --id Python.Python.3.11 `
+                --exact `
+                --scope machine `
+                --silent `
+                --accept-source-agreements `
+                --accept-package-agreements `
+                --disable-interactivity
+
+              if ($LASTEXITCODE -ne 0) {
+                throw "winget failed with exit code $LASTEXITCODE. The runner service may not have administrator privileges."
+              }
+            }
+            else {
+              Write-Host "winget is unavailable. Downloading installer from python.org..."
+
+              $ProgressPreference = "SilentlyContinue"
+              Invoke-WebRequest `
+                -Uri $installerUrl `
+                -OutFile $installerPath
+
+              Write-Host "Installing Python for all users..."
+              $process = Start-Process `
+                -FilePath $installerPath `
+                -ArgumentList @(
+                  "/quiet",
+                  "InstallAllUsers=1",
+                  "PrependPath=1",
+                  "Include_test=0",
+                  "SimpleInstall=1"
+                ) `
+                -Wait `
+                -PassThru
+
+              if ($process.ExitCode -ne 0) {
+                throw "Python installer failed with exit code $($process.ExitCode). The runner service needs administrator privileges."
+              }
+            }
+
+            Start-Sleep -Seconds 3
           }
 
-          if (-not $pythonItem.PSIsContainer -and -not $pythonItem.Exists) {
-            throw "Python executable does not exist: $pythonExe"
+          if (-not (Test-Path -LiteralPath $pythonExe -PathType Leaf)) {
+            throw "Python installation completed but executable was not found at $pythonExe."
           }
 
           $version = (& $pythonExe -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')").Trim()
+
           if ($version -ne "3.11") {
-            throw "Python is not version 3.11: $version ($pythonExe)"
+            throw "Expected Python 3.11 but found Python $version at $pythonExe."
           }
 
-          "PYTHON_EXE=$pythonExe" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8
-          "PYTHON_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8
-          $pythonDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          if (Test-Path -LiteralPath $scriptsDir -ErrorAction SilentlyContinue) {
-            $scriptsDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          "PYTHON_EXE=$pythonExe" | Out-File `
+            -FilePath $env:GITHUB_ENV `
+            -Encoding utf8
+
+          "PYTHON_VERSION=$version" | Out-File `
+            -FilePath $env:GITHUB_ENV `
+            -Encoding utf8
+
+          $pythonDir | Out-File `
+            -FilePath $env:GITHUB_PATH `
+            -Encoding utf8 `
+            -Append
+
+          if (Test-Path -LiteralPath $scriptsDir) {
+            $scriptsDir | Out-File `
+              -FilePath $env:GITHUB_PATH `
+              -Encoding utf8 `
+              -Append
           }
 
           Write-Host "Python executable: $pythonExe"
           & $pythonExe --version
           & $pythonExe -m pip --version
-      - name: Ensure Python 3.11 is installed
-        shell: powershell
-        run: |
-          $ErrorActionPreference = "Stop"
-          $pythonExe = "C:\Program Files\Python311\python.exe"
-          $pythonDir = "C:\Program Files\Python311"
-          $scriptsDir = Join-Path $pythonDir "Scripts"
-
-          if (-not (Test-Path -LiteralPath $pythonExe -PathType Leaf)) {
-            Write-Host "Python 3.11 not found at $pythonExe. Installing..."
-            $installerUrl = "https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe"
-            $installerPath = Join-Path $env:TEMP "python311-amd64.exe"
-
-            if (Get-Command winget -ErrorAction SilentlyContinue) {
-              & winget install --id Python.Python.3.11 --exact --accept-source-agreements --accept-package-agreements --silent --disable-interactivity
-            } else {
-              $ProgressPreference = 'SilentlyContinue'
-              Invoke-WebRequest -Uri $installerUrl -OutFile $installerPath
-              Start-Process -FilePath $installerPath -ArgumentList @(
-                '/quiet',
-                'InstallAllUsers=1',
-                'PrependPath=1',
-                'Include_test=0',
-                'SimpleInstall=1'
-              ) -Wait -NoNewWindow
-            }
-
-            if (-not (Test-Path -LiteralPath $pythonExe -PathType Leaf)) {
-              throw "Python 3.11 installation failed."
-            }
-          }
-
-          $version = (& $pythonExe -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')").Trim()
-          if ($version -ne "3.11") {
-            throw "Python is not version 3.11: $version"
-          }
-
-          "PYTHON_EXE=$pythonExe" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8
-          $pythonDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          if (Test-Path -LiteralPath $scriptsDir -ErrorAction SilentlyContinue) {
-            $scriptsDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          }
-
-          Write-Host "Python installed: $pythonExe"
-          & $pythonExe --version
       - name: Show runner and Python environment
         shell: powershell
         run: |
