@@ -1,0 +1,133 @@
+name: fs03-optuna-local-windows
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "pipelines/_optuna/**"
+      - "research/rf_mlflow/reproduce_fs03_fixed_params.py"
+      - "research/rf_mlflow/train_rf_mlflow.py"
+      - "research/rf_mlflow/mophong_adapter.py"
+      - "research/rf_mlflow/plots.py"
+      - "research/config.py"
+      - "research/features.py"
+      - "research/labels.py"
+      - "research/data_io.py"
+      - "requirements.txt"
+      - "pyproject.toml"
+      - ".github/workflows/fs03-optuna-local-windows.yml"
+  workflow_dispatch:
+    inputs:
+      n_trials:
+        description: "Optuna trials for CI run"
+        required: true
+        default: "3"
+      max_train_rows:
+        description: "Limit training rows for fast local CI; empty = full dataset"
+        required: false
+        default: "50000"
+      skip_simulate:
+        description: "Skip MoPhong simulation for fast CI"
+        required: true
+        type: boolean
+        default: true
+      enable_mlflow:
+        description: "Log this CI run to local MLflow sqlite"
+        required: true
+        type: boolean
+        default: false
+
+concurrency:
+  group: fs03-optuna-local-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  optuna-pipeline:
+    name: FS03 LightGBM Optuna pipeline on local Windows runner
+    runs-on: self-hosted
+    timeout-minutes: 360
+
+    defaults:
+      run:
+        shell: pwsh
+
+    env:
+      PYTHONPATH: research;research/rf_mlflow;vendor/scj
+      MLFLOW_TRACKING_URI: sqlite:///mlflow.db
+      MLFLOW_ARTIFACT_ROOT: mlruns
+      OPTUNA_N_TRIALS: ${{ github.event_name == 'workflow_dispatch' && inputs.n_trials || '3' }}
+      OPTUNA_MAX_TRAIN_ROWS: ${{ github.event_name == 'workflow_dispatch' && inputs.max_train_rows || '50000' }}
+      OPTUNA_SKIP_SIMULATE: ${{ github.event_name == 'workflow_dispatch' && inputs.skip_simulate || true }}
+      OPTUNA_ENABLE_MLFLOW: ${{ github.event_name == 'workflow_dispatch' && inputs.enable_mlflow || false }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show runner context
+        run: |
+          python --version
+          Get-Location
+          Write-Host "Event: $env:GITHUB_EVENT_NAME"
+          Write-Host "Trials: $env:OPTUNA_N_TRIALS"
+          Write-Host "Max train rows: $env:OPTUNA_MAX_TRAIN_ROWS"
+          Write-Host "Skip simulate: $env:OPTUNA_SKIP_SIMULATE"
+          Write-Host "Enable MLflow: $env:OPTUNA_ENABLE_MLFLOW"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Static syntax check
+        run: |
+          $files = Get-ChildItem -LiteralPath "pipelines/_optuna" -Filter "*.py" | ForEach-Object { $_.FullName }
+          python -m py_compile @files
+
+      - name: Lint Optuna pipeline
+        run: |
+          ruff check pipelines/_optuna
+
+      - name: CLI smoke tests
+        run: |
+          python pipelines/_optuna/data_processing.py --help
+          python pipelines/_optuna/train_optuna_fs03.py --help
+          python pipelines/_optuna/evaluate_fs03.py --help
+          python pipelines/_optuna/run_fs03_optuna_pipeline.py --help
+
+      - name: Build DVC feature store
+        run: |
+          dvc repro fs03_feature_store
+          dvc status --no-commit
+
+      - name: Run FS03 Optuna CI pipeline
+        run: |
+          $argsList = @(
+            "pipelines/_optuna/run_fs03_optuna_pipeline.py",
+            "--n-trials", "$env:OPTUNA_N_TRIALS"
+          )
+
+          if ($env:OPTUNA_MAX_TRAIN_ROWS -and $env:OPTUNA_MAX_TRAIN_ROWS.Trim() -ne "") {
+            $argsList += @("--max-train-rows", "$env:OPTUNA_MAX_TRAIN_ROWS")
+          }
+
+          if ($env:OPTUNA_SKIP_SIMULATE -eq "true" -or $env:OPTUNA_SKIP_SIMULATE -eq "True") {
+            $argsList += "--skip-simulate"
+          }
+
+          if ($env:OPTUNA_ENABLE_MLFLOW -eq "true" -or $env:OPTUNA_ENABLE_MLFLOW -eq "True") {
+            $argsList += "--enable-mlflow"
+          }
+
+          python @argsList
+
+      - name: Upload Optuna CI artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fs03-optuna-local-windows-${{ github.run_number }}
+          path: |
+            outputs/pipelines_optuna/**
+            models/*fs03_optuna_lgbm*_bundle.joblib
+          if-no-files-found: warn
+          retention-days: 14

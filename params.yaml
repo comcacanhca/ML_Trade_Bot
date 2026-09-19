@@ -1,6 +1,6 @@
 data:
-  raw_dir: data_handler/raw/1M
-  processed_dir: data_handler/processed
+  raw_dir: data/raw/1M
+  processed_dir: data/processed
 
 mlflow:
   tracking_uri: sqlite:///mlflow.db

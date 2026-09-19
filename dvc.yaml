@@ -1,4 +1,27 @@
 stages:
+  fs03_feature_store:
+    cmd: >-
+      powershell -NoProfile -ExecutionPolicy Bypass -Command
+      "$env:PYTHONPATH='research;research/rf_mlflow;vendor/scj';
+      $env:ML_TRADE_DATA_DIR=(Resolve-Path '${data.raw_dir}');
+      python pipelines/_optuna/data_processing.py --force-dataset"
+    deps:
+      - ${data.raw_dir}
+      - pipelines/_optuna/data_processing.py
+      - pipelines/_optuna/fs03_common.py
+      - research/rf_mlflow/train_rf_mlflow.py
+      - research/features.py
+      - research/labels.py
+      - research/data_io.py
+      - research/config.py
+      - vendor/scj
+    params:
+      - data.raw_dir
+      - data.processed_dir
+    outs:
+      - data/processed/fs03_lags_cycle_feature_store.parquet
+      - data/processed/fs03_lags_cycle_feature_store.meta.json
+
   build_cache:
     cmd: >-
       powershell -NoProfile -ExecutionPolicy Bypass -Command
@@ -6,7 +29,7 @@ stages:
       cd research/rf_mlflow;
       python mlops_build_cache.py"
     deps:
-      - ${data_handler.raw_dir}
+      - ${data.raw_dir}
       - research/rf_mlflow/mlops_build_cache.py
       - research/rf_mlflow/research_random50_initial_features.py
       - research/rf_mlflow/features.py
@@ -14,7 +37,7 @@ stages:
       - research/rf_mlflow/data_io.py
       - vendor/scj/method/OverlayIndicatorsNormalization.py
     params:
-      - data_handler.raw_dir
+      - data.raw_dir
       - research.rolling_scaler
     outs:
       - research/rf_mlflow/cache

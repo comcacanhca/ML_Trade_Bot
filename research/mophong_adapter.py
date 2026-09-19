@@ -61,6 +61,13 @@ def simulate_orders(data: pd.DataFrame, orders: np.ndarray, tinh_tien: bool = Tr
     frame[DATE] = frame[DATE].astype(str)
     frame[MAU_NEN] = frame[CLOSE] - frame[OPEN]
     mophong = MoPhongDeals(frame, CFG.trade.expired, tinh_tien=PARAM_TINH_TIEN if tinh_tien else None)
+    if tinh_tien and hasattr(mophong, "RES_TINH_TIEN"):
+        float_cols = ["start", "Profit", "Loss", "Fund", "Add", "Rut", "Com", "Lot", "winrate_range"]
+        for col in float_cols:
+            if col in mophong.RES_TINH_TIEN.columns:
+                mophong.RES_TINH_TIEN[col] = mophong.RES_TINH_TIEN[col].astype("float64")
+        if "Date_fill" in mophong.RES_TINH_TIEN.columns:
+            mophong.RES_TINH_TIEN["Date_fill"] = mophong.RES_TINH_TIEN["Date_fill"].astype("object")
 
     for candle in range(CFG.trade.start_candle, len(frame) - 2):
         if len(mophong.get_deals()) > 0:
