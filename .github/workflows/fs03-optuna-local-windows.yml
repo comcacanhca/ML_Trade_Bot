@@ -2,6 +2,7 @@ name: fs03-optuna-local-windows
 on:
   push:
     branches: [main, master]
+    
     paths:
       - "pipelines/_optuna/**"
       - "research/rf_mlflow/reproduce_fs03_fixed_params.py"
