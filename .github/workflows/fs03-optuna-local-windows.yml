@@ -44,7 +44,7 @@ concurrency:
 jobs:
   optuna-pipeline:
     name: FS03 LightGBM Optuna pipeline on local Windows runner
-    runs-on: [self-hosted, windows-latest]
+    runs-on: self-hosted
     timeout-minutes: 360
     defaults:
       run:
