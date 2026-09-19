@@ -62,12 +62,45 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         
-      - name: Setup Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: pip
-          cache-dependency-path: requirements.txt
+      - name: Validate local Python 3.11
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $pythonCandidates = @(
+            "C:\Program Files\Python311\python.exe",
+            "C:\Python311\python.exe",
+            "$env:LocalAppData\Programs\Python\Python311\python.exe"
+          )
+
+          $pythonExe = $pythonCandidates |
+            Where-Object { Test-Path $_ } |
+            Select-Object -First 1
+
+          if (-not $pythonExe) {
+            $command = Get-Command python -ErrorAction SilentlyContinue
+
+            if ($command) {
+              $pythonExe = $command.Source
+            }
+          }
+
+          if (-not $pythonExe) {
+            throw "Không tìm thấy Python 3.11 trên self-hosted runner. Hãy cài Python 3.11 x64 cho tài khoản chạy GitHub Actions."
+          }
+
+          $version = & $pythonExe -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"
+
+          if ($version -ne "3.11") {
+            throw "Python không đúng phiên bản 3.11: $version"
+          }
+
+          "PYTHON_EXE=$pythonExe" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8
+          "PYTHON_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8
+
+          Write-Host "Python executable: $pythonExe"
+          & $pythonExe --version
+          & $pythonExe -m pip --version
           
       - name: Show runner and Python environment
         shell: powershell
@@ -97,15 +130,16 @@ jobs:
       - name: Install dependencies
         shell: powershell
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt
+          & $env:PYTHON_EXE -m pip install --upgrade pip
+          & $env:PYTHON_EXE -m pip install -r requirements.txt
 
       - name: Static syntax check
         shell: powershell
         run: |
           $files = Get-ChildItem -LiteralPath "pipelines/_optuna" -Filter "*.py" |
             ForEach-Object { $_.FullName }
-          python -m py_compile @files
+
+          & $env:PYTHON_EXE -m py_compile @files
 
       - name: Lint Optuna pipeline
         shell: powershell
