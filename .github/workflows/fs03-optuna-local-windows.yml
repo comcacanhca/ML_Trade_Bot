@@ -61,7 +61,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        
+      
       - name: Validate local Python 3.11
         shell: powershell
         run: |
@@ -105,6 +105,8 @@ jobs:
       - name: Show runner and Python environment
         shell: powershell
         run: |
+          $env:Path = "C:\Users\admin\AppData\Local\Programs\Python\Python311;C:\Users\admin\AppData\Local\Programs\Python\Python311\Scripts;" + $env:Path
+          python --version
           Write-Host "=== Operating system ==="
           Get-CimInstance Win32_OperatingSystem |
             Select-Object Caption, Version, OSArchitecture
