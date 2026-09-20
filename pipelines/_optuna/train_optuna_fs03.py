@@ -9,7 +9,6 @@ import joblib
 import lightgbm as lgb
 import optuna
 import pandas as pd
-
 from fs03_common import (
     CFG,
     FEATURE_SET,
