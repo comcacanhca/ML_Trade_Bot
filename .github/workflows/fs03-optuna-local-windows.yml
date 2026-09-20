@@ -244,3 +244,14 @@ jobs:
             research/rf_mlflow/models/*fs03_optuna_lgbm*_bundle.joblib
           if-no-files-found: error
           retention-days: 14
+      - name: Upload MLflow logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fs03-mlflow-${{ github.run_number }}
+          path: |
+            mlflow.db
+            mlruns/**
+          if-no-files-found: warn
+          retention-days: 14
+      
