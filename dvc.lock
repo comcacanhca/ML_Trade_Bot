@@ -21,8 +21,8 @@ stages:
       size: 6370
     - path: research/config.py
       hash: md5
-      md5: 551e164b905b7c0af986dd4ac4a85cee
-      size: 2373
+      md5: 0d96df2463fd82253d2e831c59c75bda
+      size: 2351
     - path: research/data_io.py
       hash: md5
       md5: 60168261920b1c42d05e4a49821e543f
