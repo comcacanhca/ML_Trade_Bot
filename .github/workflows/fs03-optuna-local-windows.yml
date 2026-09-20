@@ -34,7 +34,7 @@ on:
         description: "Log this CI run to local MLflow sqlite"
         required: true
         type: boolean
-        default: false
+        default: true
 
 concurrency:
   group: fs03-optuna-local-windows-${{ github.ref }}
@@ -56,7 +56,7 @@ jobs:
       OPTUNA_N_TRIALS: ${{ github.event_name == 'workflow_dispatch' && inputs.n_trials || '3' }}
       OPTUNA_MAX_TRAIN_ROWS: ${{ github.event_name == 'workflow_dispatch' && inputs.max_train_rows || '50000' }}
       OPTUNA_SKIP_SIMULATE: ${{ github.event_name == 'workflow_dispatch' && inputs.skip_simulate || true }}
-      OPTUNA_ENABLE_MLFLOW: ${{ github.event_name == 'workflow_dispatch' && inputs.enable_mlflow || false }}
+      OPTUNA_ENABLE_MLFLOW: ${{ github.event_name == 'workflow_dispatch' && inputs.enable_mlflow || true }}
 
     steps:
       - name: Checkout
@@ -240,7 +240,7 @@ jobs:
         with:
           name: fs03-optuna-local-windows-${{ github.run_number }}
           path: |
-            research/rf_mlflow/outputs/pipelines_optuna/**
-            research/rf_mlflow/models/*fs03_optuna_lgbm*_bundle.joblib
+            outputs/pipelines_optuna/**
+            models/*fs03_optuna_lgbm*_bundle.joblib
           if-no-files-found: error
           retention-days: 14
