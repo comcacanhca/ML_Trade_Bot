@@ -1,0 +1,59 @@
+schema: '2.0'
+stages:
+  fs03_feature_store:
+    cmd: powershell -NoProfile -ExecutionPolicy Bypass -Command 
+      "$env:PYTHONPATH='research;research/rf_mlflow;vendor/scj'; 
+      $env:ML_TRADE_DATA_DIR=(Resolve-Path 'data/raw/1M'); python 
+      pipelines/_optuna/data_processing.py --force-dataset"
+    deps:
+    - path: data/raw/1M
+      hash: md5
+      md5: 856ca3a27b0f29c979b2691f57ff71f7.dir
+      size: 2422823877
+      nfiles: 13
+    - path: pipelines/_optuna/data_processing.py
+      hash: md5
+      md5: d4fb21fbefc5641d7a4f23b1a74a0842
+      size: 1263
+    - path: pipelines/_optuna/fs03_common.py
+      hash: md5
+      md5: 6c4d325340d032b0915edcd0f6de55a4
+      size: 6370
+    - path: research/config.py
+      hash: md5
+      md5: 551e164b905b7c0af986dd4ac4a85cee
+      size: 2373
+    - path: research/data_io.py
+      hash: md5
+      md5: 60168261920b1c42d05e4a49821e543f
+      size: 1889
+    - path: research/features.py
+      hash: md5
+      md5: 63c7822104da6e4a811c3fc9d3775488
+      size: 16739
+    - path: research/labels.py
+      hash: md5
+      md5: 338ea29ceb220f236237843b64e6d7b8
+      size: 3132
+    - path: research/rf_mlflow/train_rf_mlflow.py
+      hash: md5
+      md5: 640f1c01caadab04cb6cc8bab00ee15e
+      size: 15912
+    - path: vendor/scj
+      hash: md5
+      md5: b49868281516a3d8aec4567602bc2d39.dir
+      size: 175526
+      nfiles: 14
+    params:
+      params.yaml:
+        data.processed_dir: data/processed
+        data.raw_dir: data/raw/1M
+    outs:
+    - path: data/processed/fs03_lags_cycle_feature_store.meta.json
+      hash: md5
+      md5: 864abdc767d7c27fea5f494297e4afd4
+      size: 807
+    - path: data/processed/fs03_lags_cycle_feature_store.parquet
+      hash: md5
+      md5: 14eeca012cd2fdab9ca7a20b2a941b80
+      size: 5818687369
