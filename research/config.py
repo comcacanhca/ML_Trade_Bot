@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 
-REPO_ROOT = Path(os.getcwd().split('ML_Trade_Bot')[0]+'ML_Trade_Bot')
+REPO_ROOT = Path(__file__).resolve().parents[1]
 PROJECT_ROOT = REPO_ROOT
 WORK_DIR = REPO_ROOT / "research" / "rf_mlflow"
 VENDOR_SCJ_DIR = REPO_ROOT / "vendor" / "scj"
