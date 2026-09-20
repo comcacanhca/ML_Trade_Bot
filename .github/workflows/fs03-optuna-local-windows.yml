@@ -186,8 +186,9 @@ jobs:
       - name: Lint Optuna pipeline
         shell: powershell
         run: |
+          & $env:PYTHON_EXE -m ruff check pipelines/_optuna --fix
           & $env:PYTHON_EXE -m ruff check pipelines/_optuna
-
+          
       - name: CLI smoke tests
         shell: powershell
         run: |
