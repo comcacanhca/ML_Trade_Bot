@@ -197,6 +197,31 @@ jobs:
           & $env:PYTHON_EXE pipelines/_optuna/evaluate_fs03.py --help
           & $env:PYTHON_EXE pipelines/_optuna/run_fs03_optuna_pipeline.py --help
 
+      - name: Prepare raw DVC data in workspace
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $source = "D:\ML_Trade_Bot\data\raw\1M"
+          $target = Join-Path $env:GITHUB_WORKSPACE "data\raw\1M"
+
+          Write-Host "Source: $source"
+          Write-Host "Target: $target"
+
+          if (-not (Test-Path -LiteralPath $source -PathType Container)) {
+            throw "Source dataset not found: $source"
+          }
+
+          New-Item -ItemType Directory -Force -Path (Split-Path $target) | Out-Null
+          New-Item -ItemType Directory -Force -Path $target | Out-Null
+
+          Copy-Item -Path (Join-Path $source "*") -Destination $target -Recurse -Force
+
+      - name: Build DVC feature store
+        shell: powershell
+        run: |
+          & $env:PYTHON_EXE -m dvc repro fs03_feature_store
+      
       - name: Build DVC feature store
         shell: powershell
         run: |
