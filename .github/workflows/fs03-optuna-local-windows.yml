@@ -240,7 +240,7 @@ jobs:
         with:
           name: fs03-optuna-local-windows-${{ github.run_number }}
           path: |
-            outputs/pipelines_optuna/**
-            models/*fs03_optuna_lgbm*_bundle.joblib
+            ${{ github.workspace }}/outputs/pipelines_optuna/**
+            ${{ github.workspace }}/models/*fs03_optuna_lgbm*_bundle.joblib
           if-no-files-found: warn
           retention-days: 14
