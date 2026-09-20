@@ -36,7 +36,6 @@ on:
         required: true
         type: boolean
         default: false
-
 concurrency:
   group: fs03-optuna-local-windows-${{ github.ref }}
   cancel-in-progress: true
