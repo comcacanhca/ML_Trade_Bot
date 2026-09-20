@@ -221,12 +221,7 @@ jobs:
         shell: powershell
         run: |
           & $env:PYTHON_EXE -m dvc repro fs03_feature_store
-      
-      - name: Build DVC feature store
-        shell: powershell
-        run: |
-          & $env:PYTHON_EXE -m dvc repro fs03_feature_store
-          & $env:PYTHON_EXE -m dvc status --no-commit
+          & $env:PYTHON_EXE -m dvc status
 
       - name: Run FS03 Optuna CI pipeline
         shell: powershell
