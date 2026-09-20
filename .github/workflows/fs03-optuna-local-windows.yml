@@ -1,5 +1,4 @@
 name: fs03-optuna-local-windows
-
 on:
   push:
     branches: [main, master]
@@ -46,12 +45,11 @@ jobs:
     name: FS03 LightGBM Optuna pipeline on local Windows runner
     runs-on: self-hosted
     timeout-minutes: 360
-
     defaults:
       run:
         shell: powershell
-
     env:
+      PYTHON_EXE: 'C:\Program Files\Python311\python.exe'
       PYTHONPATH: research;research/rf_mlflow;vendor/scj
       MLFLOW_TRACKING_URI: sqlite:///mlflow.db
       MLFLOW_ARTIFACT_ROOT: mlruns
@@ -64,62 +62,157 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Show runner context
+      - name: Ensure Python 3.11 is installed
+        shell: powershell
         run: |
-          python --version
+          $ErrorActionPreference = "Stop"
+
+          $pythonExe = $env:PYTHON_EXE
+          $pythonDir = "C:\Program Files\Python311"
+          $scriptsDir = Join-Path $pythonDir "Scripts"
+
+          if (-not (Test-Path -LiteralPath $pythonExe -PathType Leaf)) {
+            Write-Host "Python 3.11 was not found. Installing..."
+
+            $winget = Get-Command winget -ErrorAction SilentlyContinue
+
+            if ($null -ne $winget) {
+              Write-Host "Installing Python with winget..."
+              & $winget.Source install `
+                --id Python.Python.3.11 `
+                --exact `
+                --scope machine `
+                --silent `
+                --accept-source-agreements `
+                --accept-package-agreements `
+                --disable-interactivity
+
+              if ($LASTEXITCODE -ne 0) {
+                throw "winget failed with exit code $LASTEXITCODE. The runner service may not have administrator privileges."
+              }
+            }
+            else {
+              Write-Host "winget is unavailable. Downloading installer from python.org..."
+              $installerUrl = "https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe"
+              $installerPath = Join-Path $env:TEMP "python-3.11.9-amd64.exe"
+
+              $ProgressPreference = "SilentlyContinue"
+              Invoke-WebRequest -Uri $installerUrl -OutFile $installerPath
+
+              Write-Host "Installing Python for all users..."
+              $process = Start-Process `
+                -FilePath $installerPath `
+                -ArgumentList @(
+                  "/quiet",
+                  "InstallAllUsers=1",
+                  "PrependPath=1",
+                  "Include_test=0",
+                  "SimpleInstall=1"
+                ) `
+                -Wait `
+                -PassThru
+
+              if ($process.ExitCode -ne 0) {
+                throw "Python installer failed with exit code $($process.ExitCode). The runner service needs administrator privileges."
+              }
+            }
+
+            Start-Sleep -Seconds 3
+          }
+
+          if (-not (Test-Path -LiteralPath $pythonExe -PathType Leaf)) {
+            throw "Python installation completed but executable was not found at $pythonExe."
+          }
+
+          $version = (& $pythonExe -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')").Trim()
+
+          if ($version -ne "3.11") {
+            throw "Expected Python 3.11 but found Python $version at $pythonExe."
+          }
+
+          $pythonDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          if (Test-Path -LiteralPath $scriptsDir) {
+            $scriptsDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          }
+
+          Write-Host "Python executable: $pythonExe"
+          & $pythonExe --version
+          & $pythonExe -m pip --version
+
+      - name: Show runner and Python environment
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          Write-Host "=== Operating system ==="
+          Get-CimInstance Win32_OperatingSystem | Select-Object Caption, Version, OSArchitecture
+
+          Write-Host "=== Runner identity ==="
+          whoami
+
+          Write-Host "=== Python environment ==="
+          if ([string]::IsNullOrWhiteSpace($env:PYTHON_EXE)) {
+            throw "PYTHON_EXE is not set."
+          }
+          if (-not (Test-Path -LiteralPath $env:PYTHON_EXE -PathType Leaf)) {
+            throw "PYTHON_EXE does not point to a file: $env:PYTHON_EXE"
+          }
+
+          & $env:PYTHON_EXE -c "import sys, platform; print('Executable:', sys.executable); print('Version:', sys.version); print('Platform:', platform.platform())"
+          & $env:PYTHON_EXE -m pip --version
+
+          Write-Host "=== Runner context ==="
           Get-Location
           Write-Host "Event: $env:GITHUB_EVENT_NAME"
+          Write-Host "Runner OS: $env:RUNNER_OS"
+          Write-Host "Runner name: $env:RUNNER_NAME"
           Write-Host "Trials: $env:OPTUNA_N_TRIALS"
           Write-Host "Max train rows: $env:OPTUNA_MAX_TRAIN_ROWS"
           Write-Host "Skip simulate: $env:OPTUNA_SKIP_SIMULATE"
           Write-Host "Enable MLflow: $env:OPTUNA_ENABLE_MLFLOW"
 
       - name: Install dependencies
+        shell: powershell
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          & $env:PYTHON_EXE -m pip install --upgrade pip
+          & $env:PYTHON_EXE -m pip install -r requirements.txt
 
       - name: Static syntax check
+        shell: powershell
         run: |
           $files = Get-ChildItem -LiteralPath "pipelines/_optuna" -Filter "*.py" | ForEach-Object { $_.FullName }
-          python -m py_compile @files
+          & $env:PYTHON_EXE -m py_compile @files
 
       - name: Lint Optuna pipeline
+        shell: powershell
         run: |
-          ruff check pipelines/_optuna
-
+          & $env:PYTHON_EXE -m ruff check pipelines/_optuna --fix
+          & $env:PYTHON_EXE -m ruff check pipelines/_optuna
+          
       - name: CLI smoke tests
+        shell: powershell
         run: |
-          python pipelines/_optuna/data_processing.py --help
-          python pipelines/_optuna/train_optuna_fs03.py --help
-          python pipelines/_optuna/evaluate_fs03.py --help
-          python pipelines/_optuna/run_fs03_optuna_pipeline.py --help
+          & $env:PYTHON_EXE pipelines/_optuna/data_processing.py --help
+          & $env:PYTHON_EXE pipelines/_optuna/train_optuna_fs03.py --help
+          & $env:PYTHON_EXE pipelines/_optuna/evaluate_fs03.py --help
+          & $env:PYTHON_EXE pipelines/_optuna/run_fs03_optuna_pipeline.py --help
 
       - name: Build DVC feature store
+        shell: powershell
         run: |
-          dvc repro fs03_feature_store
-          dvc status --no-commit
+          & $env:PYTHON_EXE -m dvc repro fs03_feature_store
+          & $env:PYTHON_EXE -m dvc status --no-commit
 
       - name: Run FS03 Optuna CI pipeline
+        shell: powershell
         run: |
-          $argsList = @(
-            "pipelines/_optuna/run_fs03_optuna_pipeline.py",
-            "--n-trials", "$env:OPTUNA_N_TRIALS"
-          )
-
+          $argsList = @("pipelines/_optuna/run_fs03_optuna_pipeline.py", "--n-trials", "$env:OPTUNA_N_TRIALS")
           if ($env:OPTUNA_MAX_TRAIN_ROWS -and $env:OPTUNA_MAX_TRAIN_ROWS.Trim() -ne "") {
             $argsList += @("--max-train-rows", "$env:OPTUNA_MAX_TRAIN_ROWS")
           }
-
-          if ($env:OPTUNA_SKIP_SIMULATE -eq "true" -or $env:OPTUNA_SKIP_SIMULATE -eq "True") {
-            $argsList += "--skip-simulate"
-          }
-
-          if ($env:OPTUNA_ENABLE_MLFLOW -eq "true" -or $env:OPTUNA_ENABLE_MLFLOW -eq "True") {
-            $argsList += "--enable-mlflow"
-          }
-
-          python @argsList
+          if ($env:OPTUNA_SKIP_SIMULATE -match "^(true|True)$") { $argsList += "--skip-simulate" }
+          if ($env:OPTUNA_ENABLE_MLFLOW -match "^(true|True)$") { $argsList += "--enable-mlflow" }
+          & $env:PYTHON_EXE @argsList
 
       - name: Upload Optuna CI artifacts
         if: always()
