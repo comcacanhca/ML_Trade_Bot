@@ -27,8 +27,12 @@ for path in (RESEARCH_ROOT, RF_MLFLOW_ROOT, PROJECT_ROOT):
 
 from research.config import CFG, ensure_dirs  # noqa: E402
 from research.features import RobustClipScaler, named_feature_sets  # noqa: E402
-from research.rf_mlflow.train_rf_mlflow import _candidate_dataset, _proxy_threshold_table, _score_full_frame, build_cached_dataset  # noqa: E402
-
+from research.rf_mlflow.train_rf_mlflow import (  # noqa: E402
+    _candidate_dataset,
+    _proxy_threshold_table,
+    _score_full_frame,
+    build_cached_dataset,
+)
 FEATURE_SET = "fs03_lags_cycle"
 DEFAULT_THRESHOLDS = (0.56, 0.57, 0.58)
 

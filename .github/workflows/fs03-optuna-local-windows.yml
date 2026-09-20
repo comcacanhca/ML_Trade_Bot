@@ -49,7 +49,7 @@ jobs:
 
     defaults:
       run:
-        shell: pwsh
+        shell: powershell
 
     env:
       PYTHONPATH: research;research/rf_mlflow;vendor/scj

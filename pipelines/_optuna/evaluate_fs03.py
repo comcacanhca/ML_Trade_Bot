@@ -9,8 +9,16 @@ import joblib
 import numpy as np
 import pandas as pd
 
-from fs03_common import dump_json, load_fs03_splits, metrics_from_scores, mlflow_client, new_run_dir, parse_thresholds, threshold_curves
-from mophong_adapter import orders_from_scores, simulate_orders
+from fs03_common import (
+    dump_json,
+    load_fs03_splits,
+    metrics_from_scores,
+    mlflow_client,
+    new_run_dir,
+    parse_thresholds,
+    threshold_curves,
+)
+from research.mophong_adapter import orders_from_scores, simulate_orders
 
 
 def simulate_thresholds(frame: pd.DataFrame, scores, thresholds: list[float], out_dir: Path) -> pd.DataFrame:
