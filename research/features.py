@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
 
-from config import CFG
-from data_io import CLOSE, DATE, HIGH, LOW, OPEN, VOLUME
+from research.config import CFG
+from research.data_io import CLOSE, DATE, HIGH, LOW, OPEN, VOLUME
 from method.OverlayIndicatorsNormalization import (
     OverlayNormalizationConfig,
     normalize_overlay_indicator,

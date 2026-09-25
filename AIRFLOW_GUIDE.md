@@ -145,6 +145,8 @@ Lấy mật khẩu:
 
 ```bash
 cat "$AIRFLOW_HOME/airflow_home/airflow.db" | grep "password"
+
+ cat /home/tunglehuu/airflow/airflow_home/simple_auth_manager_passwords.json.generated
 ```
 
 

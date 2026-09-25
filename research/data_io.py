@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from config import DATA_DIR, PROJECT_ROOT
+from research.config import DATA_DIR, PROJECT_ROOT
 
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))

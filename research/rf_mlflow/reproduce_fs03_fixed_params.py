@@ -9,13 +9,14 @@ from pathlib import Path
 import joblib
 import numpy as np
 import pandas as pd
+from pandas import DataFrame
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, brier_score_loss, log_loss, roc_auc_score
 
-from config import CFG, PROJECT_ROOT, ensure_dirs
-from features import RobustClipScaler, named_feature_sets
-from mophong_adapter import orders_from_scores, simulate_orders
-from plots import plot_model_diagnostics, plot_threshold_curve, plot_yearly_mophong
+from research.config import CFG, PROJECT_ROOT, ensure_dirs
+from research.features import RobustClipScaler, named_feature_sets
+from research.mophong_adapter import orders_from_scores, simulate_orders
+from research.plots import plot_model_diagnostics, plot_threshold_curve, plot_yearly_mophong
 from train_rf_mlflow import _candidate_dataset, _proxy_threshold_table, _score_full_frame, build_cached_dataset
 
 
@@ -144,8 +145,8 @@ def run(simulate_threshold_values: list[float], force_dataset: bool, skip_simula
     model_path = CFG.model_dir / f"fs03_fixed_params_{run_id}_bundle.joblib"
     valid_curve.to_csv(valid_curve_path, index=False, encoding="utf-8-sig")
     test_curve.to_csv(test_curve_path, index=False, encoding="utf-8-sig")
-    comparison = compare_old_new(test_curve)
-    comparison.to_csv(comparison_path, index=False, encoding="utf-8-sig")
+    #comparison: DataFrame = compare_old_new(test_curve)
+    #comparison.to_csv(comparison_path, index=False, encoding="utf-8-sig")
     joblib.dump({"model": model, "scaler": scaler, "feature_columns": cols, "params": FIXED_PARAMS}, model_path, compress=3)
 
     chart_paths = []
@@ -181,7 +182,7 @@ def run(simulate_threshold_values: list[float], force_dataset: bool, skip_simula
         "test_metrics": test_metrics,
         "simulated_thresholds": simulate_threshold_values,
         "simulation_total": sim_total.to_dict(orient="records") if not sim_total.empty else [],
-        "curve_comparison_key_thresholds": comparison[comparison["threshold"].isin(simulate_threshold_values)].to_dict(orient="records"),
+        #"curve_comparison_key_thresholds": comparison[comparison["threshold"].isin(simulate_threshold_values)].to_dict(orient="records"),
         "out_dir": str(out_dir),
         "elapsed_sec": round(time.time() - started, 2),
     }

@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 from numba import njit
 
-from config import CFG
-from data_io import CLOSE, HIGH, LOW, OPEN
+from research.config import CFG
+from research.data_io import CLOSE, HIGH, LOW, OPEN
 
 
 @njit(cache=True)
