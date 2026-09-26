@@ -6,6 +6,9 @@ __pycache__/
 .mypy_cache/
 .venv/
 venv/
+README.md
+pyproject.toml
+
 
 # local data_handler/artifacts; version through DVC instead of git
 data/raw/**
